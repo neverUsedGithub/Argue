@@ -27,9 +27,4 @@ const ctx =
     })
     .parse(process.argv.slice(2));
 
-if (ctx.command === "help") {
-    ctx.help();
-    process.exit(1);
-}
-
 console.log("Compiling", ctx.argv.files, "with template", ctx.argv.template);
