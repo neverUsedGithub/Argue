@@ -1,5 +1,5 @@
 /**
- * Argue - Modern argument parsing
+ * Argue - Modern argument parsing, with colors, made easy.
  */
 interface ArgueColors {
     error?: (input: string) => string;

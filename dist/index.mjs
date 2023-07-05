@@ -1,6 +1,6 @@
 // src/index.ts
 var SPACE_REGEX = / /g;
-var NUMBER_REGEX = /^((0|[1-9]+)(\.[0-9]+)?)$/;
+var NUMBER_REGEX = /^((0|[1-9][0-9]*)(\.[0-9]+)?)$/;
 function normalizeName(name) {
   if (!name.includes("-"))
     return name;
@@ -72,7 +72,7 @@ var ArgueParse = class _ArgueParse {
         "A required argument cannot follow a not required one."
       );
     this.args.push({
-      required: options.required ?? true,
+      required: options.required ?? false,
       describe: options.describe ?? "",
       default: options.default ?? null,
       accepts: options.accepts ?? "string",
@@ -185,6 +185,9 @@ var ArgueParse = class _ArgueParse {
         ).help();
         process.exit(0);
       }
+      if (!result.success)
+        return { success: false, error: result.error };
+      result.ctx.command = cmd.name;
       return result;
     }
     if (this.commands.length !== 0 && this.options.commandRequired) {
@@ -214,6 +217,8 @@ var ArgueParse = class _ArgueParse {
         }
       }
       const argName = foundArg.names[foundArg.names.length - 1];
+      if (foundArg.type === "argument")
+        usedName = argName;
       let argValue;
       if (foundArg.type === "option" && foundArg.accepts !== "boolean")
         argValue = args[++i];

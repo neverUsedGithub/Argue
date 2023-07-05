@@ -1,5 +1,5 @@
 /**
- * Argue - Modern argument parsing
+ * Argue - Modern argument parsing, with colors, made easy.
  */
 
 export interface ArgueColors {
@@ -60,7 +60,7 @@ export type ParseResult =
     | { success: false; error: string };
 
 const SPACE_REGEX = / /g;
-const NUMBER_REGEX = /^((0|[1-9]+)(\.[0-9]+)?)$/;
+const NUMBER_REGEX = /^((0|[1-9][0-9]*)(\.[0-9]+)?)$/;
 
 function normalizeName(name: string): string {
     if (!name.includes("-")) return name;
@@ -69,7 +69,10 @@ function normalizeName(name: string): string {
     return name.substring(i);
 }
 
-function logColored(color: ((input: string) => string) | undefined, message: string) {
+function logColored(
+    color: ((input: string) => string) | undefined,
+    message: string
+) {
     if (color) console.log(color(message));
     else console.log(message);
 }
@@ -143,7 +146,7 @@ class ArgueParse {
             );
 
         this.args.push({
-            required: options.required ?? true,
+            required: options.required ?? false,
             describe: options.describe ?? "",
             default: options.default ?? null,
             accepts: options.accepts ?? "string",
@@ -274,6 +277,10 @@ class ArgueParse {
                 process.exit(0);
             }
 
+            if (!result.success)
+                return { success: false, error: result.error }
+            
+            result.ctx.command = cmd.name;
             return result;
         }
 
@@ -315,6 +322,9 @@ class ArgueParse {
             }
 
             const argName = foundArg.names[foundArg.names.length - 1];
+
+            if (foundArg.type === "argument")
+                usedName = argName;
 
             let argValue: string;
             if (foundArg.type === "option" && foundArg.accepts !== "boolean")
