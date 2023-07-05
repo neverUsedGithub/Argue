@@ -1,0 +1,27 @@
+{
+    "name": "argue",
+    "version": "1.0.0",
+    "description": "",
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "build": "npx tsup"
+    },
+    "exports": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.mjs",
+        "require": "./dist/index.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@types/node": "^20.3.3"
+    },
+    "devDependencies": {
+        "chalk": "^4.1.2",
+        "ts-node": "^10.9.1",
+        "tsup": "^7.1.0"
+    }
+}
