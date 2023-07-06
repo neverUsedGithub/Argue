@@ -77,6 +77,19 @@ function logColored(
     else console.log(message);
 }
 
+function stringifyValue(value: any) {
+    if (typeof value === "string") return `"${value}"`;
+
+    return value;
+}
+
+function stringifyType(value: ArgueArg["accepts"]): string {
+    if (Array.isArray(value))
+        return value.map(stringifyValue).join(", ");
+    
+    return value;
+}
+
 class ArgueParse {
     private commands: ArgueCommand[];
     private options: ArgueOptions;
@@ -170,25 +183,28 @@ class ArgueParse {
         if (error) {
             logColored(this.options.colors?.error, `Error: ${error}\n`);
         }
-        logColored(
-            this.options.colors?.program,
-            this.options.name + (this.options.suffix ?? "")
-        );
+
         if (this.options.describe) {
-            logColored(
-                this.options.colors?.description,
-                "\n" + this.options.describe
-            );
+            logColored(this.options.colors?.description, this.options.describe);
         }
         console.log();
 
-        if (this.commands.length > 0) {
-            const maxLength = Math.max(
-                ...this.commands.map(
-                    (cmd) => (cmd.help ? cmd.help : cmd.name).length
-                )
-            );
+        logColored(this.options.colors?.header, "Usage");
+        logColored(
+            this.options.colors?.program,
+            "  " + this.options.name + (this.options.suffix ?? "") + "\n"
+        );
 
+        const realArgs = this.args.concat(this.kwargs);
+
+        const maxLength = Math.max(
+            ...this.commands.map(
+                (cmd) => (cmd.help ? cmd.help : cmd.name).length
+            ),
+            ...realArgs.map((a) => a.names.join(", ").length)
+        );
+
+        if (this.commands.length > 0) {
             logColored(this.options.colors?.header, "Commands");
             for (const cmd of this.commands) {
                 let first = (cmd.help ? cmd.help : cmd.name).padEnd(maxLength);
@@ -205,15 +221,16 @@ class ArgueParse {
             console.log();
         }
 
-        const realArgs = this.kwargs.concat(this.args);
         if (realArgs.length > 0) {
-            const maxLength = Math.max(
-                ...realArgs.map((a) => a.names.join(", ").length)
-            );
             logColored(this.options.colors?.header, "Options");
             for (const arg of realArgs) {
                 let first = arg.names.join(", ").padEnd(maxLength);
-                let second = arg.describe;
+                let second =
+                    arg.describe +
+                    (arg.accepts ? ` (${stringifyType(arg.accepts)})` : "") +
+                    (!arg.required && arg.default !== undefined
+                        ? ` (default: ${stringifyValue(arg.default)})`
+                        : "");
 
                 if (this.options.colors?.options)
                     first = this.options.colors.options(first);
@@ -226,7 +243,9 @@ class ArgueParse {
         }
     }
 
-    safeParse<T extends Record<string, any> = Record<string, unknown>>(args: string[]): ParseResult<T> {
+    safeParse<T extends Record<string, any> = Record<string, unknown>>(
+        args: string[]
+    ): ParseResult<T> {
         const parsedArgs: Record<string, unknown> = {};
         let posIndex: number = 0;
 
@@ -275,9 +294,10 @@ class ArgueParse {
                     .handler(
                         new ArgueParse(
                             {
-                                name: foundCommand.name,
+                                name: foundCommand.help ?? foundCommand.name,
                                 suffix: "",
                                 colors: this.options.colors,
+                                describe: foundCommand.describe,
                             },
                             true
                         )
@@ -418,7 +438,9 @@ class ArgueParse {
         } as ParseResult<T>;
     }
 
-    parse<T extends Record<string, any> = Record<string, unknown>>(args: string[]): ParseContext<T> {
+    parse<T extends Record<string, any> = Record<string, unknown>>(
+        args: string[]
+    ): ParseContext<T> {
         const res = this.safeParse<T>(args);
 
         if (!res.success) {

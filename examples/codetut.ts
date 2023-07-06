@@ -21,7 +21,7 @@ const ctx =
     })
     .opt({
         name: "-t, --template",
-        describe: "The template to use",
+        describe: "The template to use.",
         accepts: [ "scrollycoding" ],
         default: "scrollycoding"
     })

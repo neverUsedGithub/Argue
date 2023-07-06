@@ -9,7 +9,7 @@ const ctx =
     .command({
         name: "serve",
         help: "serve [port]",
-        describe: "start a server"
+        describe: "Start a server on the specified port."
     }, argue => argue
         .pos({
             name: "port",

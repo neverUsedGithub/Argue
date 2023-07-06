@@ -39,6 +39,16 @@ function logColored(color, message) {
   else
     console.log(message);
 }
+function stringifyValue(value) {
+  if (typeof value === "string")
+    return `"${value}"`;
+  return value;
+}
+function stringifyType(value) {
+  if (Array.isArray(value))
+    return value.map(stringifyValue).join(", ");
+  return value;
+}
 var ArgueParse = class _ArgueParse {
   commands;
   options;
@@ -115,52 +125,48 @@ var ArgueParse = class _ArgueParse {
     return this;
   }
   help(error) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
     if (error) {
       logColored((_a = this.options.colors) == null ? void 0 : _a.error, `Error: ${error}
 `);
     }
-    logColored(
-      (_b = this.options.colors) == null ? void 0 : _b.program,
-      this.options.name + (this.options.suffix ?? "")
-    );
     if (this.options.describe) {
-      logColored(
-        (_c = this.options.colors) == null ? void 0 : _c.description,
-        "\n" + this.options.describe
-      );
+      logColored((_b = this.options.colors) == null ? void 0 : _b.description, this.options.describe);
     }
     console.log();
+    logColored((_c = this.options.colors) == null ? void 0 : _c.header, "Usage");
+    logColored(
+      (_d = this.options.colors) == null ? void 0 : _d.program,
+      "  " + this.options.name + (this.options.suffix ?? "") + "\n"
+    );
+    const realArgs = this.args.concat(this.kwargs);
+    const maxLength = Math.max(
+      ...this.commands.map(
+        (cmd) => (cmd.help ? cmd.help : cmd.name).length
+      ),
+      ...realArgs.map((a) => a.names.join(", ").length)
+    );
     if (this.commands.length > 0) {
-      const maxLength = Math.max(
-        ...this.commands.map(
-          (cmd) => (cmd.help ? cmd.help : cmd.name).length
-        )
-      );
-      logColored((_d = this.options.colors) == null ? void 0 : _d.header, "Commands");
+      logColored((_e = this.options.colors) == null ? void 0 : _e.header, "Commands");
       for (const cmd of this.commands) {
         let first = (cmd.help ? cmd.help : cmd.name).padEnd(maxLength);
         let second = cmd.describe;
-        if ((_e = this.options.colors) == null ? void 0 : _e.commands)
+        if ((_f = this.options.colors) == null ? void 0 : _f.commands)
           first = this.options.colors.commands(first);
-        if ((_f = this.options.colors) == null ? void 0 : _f.description)
+        if ((_g = this.options.colors) == null ? void 0 : _g.description)
           second = this.options.colors.description(second);
         console.log("  " + first + "  " + second);
       }
       console.log();
     }
-    const realArgs = this.kwargs.concat(this.args);
     if (realArgs.length > 0) {
-      const maxLength = Math.max(
-        ...realArgs.map((a) => a.names.join(", ").length)
-      );
-      logColored((_g = this.options.colors) == null ? void 0 : _g.header, "Options");
+      logColored((_h = this.options.colors) == null ? void 0 : _h.header, "Options");
       for (const arg of realArgs) {
         let first = arg.names.join(", ").padEnd(maxLength);
-        let second = arg.describe;
-        if ((_h = this.options.colors) == null ? void 0 : _h.options)
+        let second = arg.describe + (arg.accepts ? ` (${stringifyType(arg.accepts)})` : "") + (!arg.required && arg.default !== void 0 ? ` (default: ${stringifyValue(arg.default)})` : "");
+        if ((_i = this.options.colors) == null ? void 0 : _i.options)
           first = this.options.colors.options(first);
-        if ((_i = this.options.colors) == null ? void 0 : _i.description)
+        if ((_j = this.options.colors) == null ? void 0 : _j.description)
           second = this.options.colors.description(second);
         console.log("  " + first + "  " + second);
       }
@@ -208,9 +214,10 @@ var ArgueParse = class _ArgueParse {
         foundCommand.handler(
           new _ArgueParse(
             {
-              name: foundCommand.name,
+              name: foundCommand.help ?? foundCommand.name,
               suffix: "",
-              colors: this.options.colors
+              colors: this.options.colors,
+              describe: foundCommand.describe
             },
             true
           )
