@@ -49,6 +49,7 @@ declare class ArgueParse {
     private kwargs;
     private args;
     private seenOptional;
+    private seenMultiple;
     private isSubcommand;
     constructor(options: ArgueOptions, isSubcommand?: boolean);
     command(options: ArgueCommandOptions, handler?: (parser: ArgueParse) => ArgueParse): this;

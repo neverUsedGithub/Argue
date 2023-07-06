@@ -83,6 +83,7 @@ class ArgueParse {
     private kwargs: ArgueArg[];
     private args: (ArgueArg & { multiple: boolean })[];
     private seenOptional: boolean;
+    private seenMultiple: boolean;
     private isSubcommand: boolean;
 
     constructor(options: ArgueOptions, isSubcommand?: boolean) {
@@ -94,6 +95,7 @@ class ArgueParse {
         this.kwargs = [];
         this.args = [];
         this.seenOptional = false;
+        this.seenMultiple = false;
 
         if (!this.isSubcommand) {
             this.commands.push({
@@ -140,11 +142,18 @@ class ArgueParse {
     }
 
     pos(options: ArguePosOptions) {
-        if (options.required && this.seenOptional)
+        if (this.seenMultiple)
             throw new Error(
-                "A required argument cannot follow a not required one."
+                "No arguments can follow an argument that accepts multiple values."
             );
 
+        if (options.required && this.seenOptional)
+            throw new Error(
+                "A required argument cannot follow an optional one."
+            );
+
+        this.seenMultiple = options.multiple ?? false;
+        this.seenOptional = !options.required;
         this.args.push({
             required: options.required ?? false,
             describe: options.describe ?? "",

@@ -21,6 +21,7 @@ var ArgueParse = class _ArgueParse {
   kwargs;
   args;
   seenOptional;
+  seenMultiple;
   isSubcommand;
   constructor(options, isSubcommand) {
     this.options = options;
@@ -30,6 +31,7 @@ var ArgueParse = class _ArgueParse {
     this.kwargs = [];
     this.args = [];
     this.seenOptional = false;
+    this.seenMultiple = false;
     if (!this.isSubcommand) {
       this.commands.push({
         name: "help",
@@ -67,10 +69,16 @@ var ArgueParse = class _ArgueParse {
     return this;
   }
   pos(options) {
+    if (this.seenMultiple)
+      throw new Error(
+        "No arguments can follow an argument that accepts multiple values."
+      );
     if (options.required && this.seenOptional)
       throw new Error(
-        "A required argument cannot follow a not required one."
+        "A required argument cannot follow an optional one."
       );
+    this.seenMultiple = options.multiple ?? false;
+    this.seenOptional = !options.required;
     this.args.push({
       required: options.required ?? false,
       describe: options.describe ?? "",
