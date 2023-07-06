@@ -185,9 +185,8 @@ class ArgueParse {
         }
 
         if (this.options.describe) {
-            logColored(this.options.colors?.description, this.options.describe);
+            logColored(this.options.colors?.description, this.options.describe + "\n");
         }
-        console.log();
 
         logColored(this.options.colors?.header, "Usage");
         logColored(
