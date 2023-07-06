@@ -131,9 +131,8 @@ var ArgueParse = class _ArgueParse {
 `);
     }
     if (this.options.describe) {
-      logColored((_b = this.options.colors) == null ? void 0 : _b.description, this.options.describe);
+      logColored((_b = this.options.colors) == null ? void 0 : _b.description, this.options.describe + "\n");
     }
-    console.log();
     logColored((_c = this.options.colors) == null ? void 0 : _c.header, "Usage");
     logColored(
       (_d = this.options.colors) == null ? void 0 : _d.program,
