@@ -31,14 +31,14 @@ interface ArgueCommandOptions {
     describe?: string;
     help?: string | null;
 }
-interface ParseContext {
+interface ParseContext<T = Record<string, unknown>> {
     command?: string;
-    argv: Record<string, unknown>;
+    argv: T;
     help: () => void;
 }
-type ParseResult = {
+type ParseResult<T> = {
     success: true;
-    ctx: ParseContext;
+    ctx: ParseContext<T>;
 } | {
     success: false;
     error: string;
@@ -56,8 +56,8 @@ declare class ArgueParse {
     opt(options: ArgueOptOptions): this;
     pos(options: ArguePosOptions): this;
     help(error?: string): void;
-    safeParse(args: string[]): ParseResult;
-    parse(args: string[]): ParseContext;
+    safeParse<T extends Record<string, any> = Record<string, unknown>>(args: string[]): ParseResult<T>;
+    parse<T extends Record<string, any> = Record<string, unknown>>(args: string[]): ParseContext<T>;
 }
 declare function argue(options?: ArgueOptions): ArgueParse;
 

@@ -46,16 +46,16 @@ export interface ArgueCommandOptions {
     help?: string | null;
 }
 
-export interface ParseContext {
+export interface ParseContext<T = Record<string, unknown>> {
     command?: string;
-    argv: Record<string, unknown>;
+    argv: T;
     help: () => void;
 }
 
-export type ParseResult =
+export type ParseResult<T> =
     | {
           success: true;
-          ctx: ParseContext;
+          ctx: ParseContext<T>;
       }
     | { success: false; error: string };
 
@@ -226,7 +226,7 @@ class ArgueParse {
         }
     }
 
-    safeParse(args: string[]): ParseResult {
+    safeParse<T extends Record<string, any> = Record<string, unknown>>(args: string[]): ParseResult<T> {
         const parsedArgs: Record<string, unknown> = {};
         let posIndex: number = 0;
 
@@ -240,7 +240,7 @@ class ArgueParse {
                         argv: {},
                         help: (error?: string) => this.help(error),
                     },
-                };
+                } as ParseResult<T>;
             }
 
             const parser = cmd.handler(new ArgueParse({}, true));
@@ -286,11 +286,10 @@ class ArgueParse {
                 process.exit(0);
             }
 
-            if (!result.success)
-                return { success: false, error: result.error }
-            
+            if (!result.success) return { success: false, error: result.error };
+
             result.ctx.command = cmd.name;
-            return result;
+            return result as ParseResult<T>;
         }
 
         if (this.commands.length !== 0 && this.options.commandRequired) {
@@ -332,8 +331,7 @@ class ArgueParse {
 
             const argName = foundArg.names[foundArg.names.length - 1];
 
-            if (foundArg.type === "argument")
-                usedName = argName;
+            if (foundArg.type === "argument") usedName = argName;
 
             let argValue: string;
             if (foundArg.type === "option" && foundArg.accepts !== "boolean")
@@ -417,11 +415,11 @@ class ArgueParse {
                 argv: parsedArgs,
                 help: (error?: string) => this.help(error),
             },
-        };
+        } as ParseResult<T>;
     }
 
-    parse(args: string[]): ParseContext {
-        const res = this.safeParse(args);
+    parse<T extends Record<string, any> = Record<string, unknown>>(args: string[]): ParseContext<T> {
+        const res = this.safeParse<T>(args);
 
         if (!res.success) {
             this.help(res.error);

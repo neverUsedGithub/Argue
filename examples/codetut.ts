@@ -25,6 +25,6 @@ const ctx =
         accepts: [ "scrollycoding" ],
         default: "scrollycoding"
     })
-    .parse(process.argv.slice(2));
+    .parse<{ files: string[], template: "scrollycoding" }>(process.argv.slice(2));
 
 console.log("Compiling", ctx.argv.files, "with template", ctx.argv.template);
