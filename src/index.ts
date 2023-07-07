@@ -33,9 +33,24 @@ type ArgueArg = Omit<Required<ArgueArgOptions>, "name"> & {
     type: "option" | "argument";
 };
 
-type ArgueCommand = Required<ArgueCommandOptions> & {
-    handler: ((parser: ArgueParse) => ArgueParse) | null;
-};
+type ArgueCommand<T extends Record<string, any> = {}> =
+    Required<ArgueCommandOptions> & {
+        handler: ((parser: ArgueParse<T>) => ArgueParse<T>) | null;
+    };
+
+type ArgumentToType<T extends string | string[] | undefined> = T extends undefined ? unknown
+    : T extends "string"
+    ? string
+    : T extends "number"
+    ? number
+    : T extends "boolean"
+    ? boolean
+    : T extends string[]
+    ? string
+    : never;
+
+type ArgumentMultiple<T, U extends boolean | undefined> = U extends undefined ? T : U extends true ? T[] : T;
+type ArgumentRequired<T, U extends boolean | undefined, V> = U extends undefined ? T | V : U extends true ? T : T | V;
 
 export type ArgueOptOptions = ArgueArgOptions;
 export type ArguePosOptions = ArgueArgOptions;
@@ -83,14 +98,31 @@ function stringifyValue(value: any) {
     return value;
 }
 
+type StripLeadingDashes<T extends string> = T extends `--${infer Name}`
+    ? Name
+    : T extends `-${infer Name}`
+    ? Name
+    : never;
+
+type SplitAtCommas<T extends string> =
+    T extends `${infer First},${infer Space}${infer Rest}`
+        ? [First, ...SplitAtCommas<Rest>]
+        : [T];
+
+type GetLastItem<T extends any[]> = T extends [...infer _, infer Last]
+    ? Last
+    : never;
+type NormalizeOptionName<T extends string> = StripLeadingDashes<
+    GetLastItem<SplitAtCommas<T>>
+>;
+
 function stringifyType(value: ArgueArg["accepts"]): string {
-    if (Array.isArray(value))
-        return value.map(stringifyValue).join(", ");
-    
+    if (Array.isArray(value)) return value.map(stringifyValue).join(", ");
+
     return value;
 }
 
-class ArgueParse {
+class ArgueParse<T extends Record<string, any>> {
     private commands: ArgueCommand[];
     private options: ArgueOptions;
     private kwargs: ArgueArg[];
@@ -111,35 +143,46 @@ class ArgueParse {
         this.seenMultiple = false;
 
         if (!this.isSubcommand) {
-            this.commands.push({
-                name: "help",
-                help: "help [command]",
-                describe: "Shows a help menu.",
-                handler: (argue) =>
+            this.command(
+                {
+                    name: "help",
+                    help: "help [command]",
+                    describe: "Shows a help menu.",
+                },
+                (argue) =>
                     argue.pos({
                         name: "command",
                         describe: "The command to help with.",
                         default: null,
                         required: false,
-                    }),
-            });
+                    })
+            );
         }
     }
 
-    command(
+    command<S>(
         options: ArgueCommandOptions,
-        handler?: (parser: ArgueParse) => ArgueParse
-    ) {
-        this.commands.push({
+        handler?: (parser: ArgueParse<{}>) => S
+    ): typeof handler extends undefined
+        ? ArgueParse<T>
+        : ArgueParse<T & (S extends ArgueParse<infer U> ? U : never)> {
+        const command: ArgueCommand = {
             name: options.name,
             describe: options.describe ?? "",
-            handler: handler ?? null,
+            handler: (handler as any) ?? null,
             help: options.help ?? null,
-        });
-        return this;
+        };
+
+        this.commands.push(command);
+
+        return this as any;
     }
 
-    opt(options: ArgueOptOptions) {
+    opt<U extends string, V extends ArgueOptOptions["accepts"], W extends ArgueOptOptions["multiple"] = false, E extends ArgueOptOptions["required"] = false, S extends ArgueOptOptions["default"] = undefined>(
+        options: ArgueOptOptions & { name: U, accepts?: V, multiple?: W, required?: E, default?: S }
+    ): ArgueParse<
+        T & { [K in NormalizeOptionName<U>]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S> }
+    > {
         const names = options.name.replace(SPACE_REGEX, "").split(",");
 
         this.kwargs.push({
@@ -151,10 +194,13 @@ class ArgueParse {
             multiple: options.multiple ?? false,
             type: "option",
         });
-        return this;
+
+        return this as any;
     }
 
-    pos(options: ArguePosOptions) {
+    pos<U extends string, V extends ArguePosOptions["accepts"], W extends ArguePosOptions["multiple"] = false, E extends ArguePosOptions["required"] = false, S extends ArgueOptOptions["default"] = undefined>(
+        options: ArguePosOptions & { name: U, accepts?: V, multiple?: W, required?: E, default?: S }
+    ): ArgueParse<T & { [K in U]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S> }> {
         if (this.seenMultiple)
             throw new Error(
                 "No arguments can follow an argument that accepts multiple values."
@@ -176,7 +222,7 @@ class ArgueParse {
             multiple: options.multiple ?? false,
             type: "argument",
         });
-        return this;
+        return this as any;
     }
 
     help(error?: string) {
@@ -185,7 +231,10 @@ class ArgueParse {
         }
 
         if (this.options.describe) {
-            logColored(this.options.colors?.description, this.options.describe + "\n");
+            logColored(
+                this.options.colors?.description,
+                this.options.describe + "\n"
+            );
         }
 
         logColored(this.options.colors?.header, "Usage");
@@ -242,9 +291,7 @@ class ArgueParse {
         }
     }
 
-    safeParse<T extends Record<string, any> = Record<string, unknown>>(
-        args: string[]
-    ): ParseResult<T> {
+    safeParse(args: string[]): ParseResult<T> {
         const parsedArgs: Record<string, unknown> = {};
         let posIndex: number = 0;
 
@@ -261,10 +308,11 @@ class ArgueParse {
                 } as ParseResult<T>;
             }
 
-            const parser = cmd.handler(new ArgueParse({}, true));
+            const parser = cmd.handler(new ArgueParse({}, true) as this);
             const result = parser.safeParse(args.slice(1));
 
             if (result.success && cmd.name === "help") {
+                // @ts-ignore
                 const cmd = result.ctx.argv.command;
 
                 if (cmd === null) {
@@ -299,7 +347,7 @@ class ArgueParse {
                                 describe: foundCommand.describe,
                             },
                             true
-                        )
+                        ) as this
                     )
                     .help();
                 process.exit(0);
@@ -437,10 +485,8 @@ class ArgueParse {
         } as ParseResult<T>;
     }
 
-    parse<T extends Record<string, any> = Record<string, unknown>>(
-        args: string[]
-    ): ParseContext<T> {
-        const res = this.safeParse<T>(args);
+    parse(args: string[]): ParseContext<T> {
+        const res = this.safeParse(args);
 
         if (!res.success) {
             this.help(res.error);
@@ -452,7 +498,7 @@ class ArgueParse {
 }
 
 export default function argue(options?: ArgueOptions) {
-    return new ArgueParse(
+    return new ArgueParse<{}>(
         options ?? {
             name: "program",
             commandRequired: true,

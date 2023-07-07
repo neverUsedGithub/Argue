@@ -23,8 +23,10 @@ const ctx =
         name: "-t, --template",
         describe: "The template to use.",
         accepts: [ "scrollycoding" ],
-        default: "scrollycoding"
+        default: "scrollycoding",
     })
-    .parse<{ files: string[], template: "scrollycoding" }>(process.argv.slice(2));
+    .parse(process.argv.slice(2));
 
+console.log(ctx.argv)
+//              ^?
 console.log("Compiling", ctx.argv.files, "with template", ctx.argv.template);

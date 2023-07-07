@@ -23,6 +23,7 @@ const ctx =
         describe: "Use verbose logging.",
         accepts: "boolean"
     })
-    .parse<{ verbose: boolean, port: number }>(process.argv.slice(2));
+    .parse(process.argv.slice(2));
 
-console.log(ctx);
+console.log(ctx.argv);
+//              ^?

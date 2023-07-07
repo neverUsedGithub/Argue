@@ -43,26 +43,29 @@ var ArgueParse = class _ArgueParse {
     this.seenOptional = false;
     this.seenMultiple = false;
     if (!this.isSubcommand) {
-      this.commands.push({
-        name: "help",
-        help: "help [command]",
-        describe: "Shows a help menu.",
-        handler: (argue2) => argue2.pos({
+      this.command(
+        {
+          name: "help",
+          help: "help [command]",
+          describe: "Shows a help menu."
+        },
+        (argue2) => argue2.pos({
           name: "command",
           describe: "The command to help with.",
           default: null,
           required: false
         })
-      });
+      );
     }
   }
   command(options, handler) {
-    this.commands.push({
+    const command = {
       name: options.name,
       describe: options.describe ?? "",
       handler: handler ?? null,
       help: options.help ?? null
-    });
+    };
+    this.commands.push(command);
     return this;
   }
   opt(options) {
@@ -107,7 +110,10 @@ var ArgueParse = class _ArgueParse {
 `);
     }
     if (this.options.describe) {
-      logColored((_b = this.options.colors) == null ? void 0 : _b.description, this.options.describe + "\n");
+      logColored(
+        (_b = this.options.colors) == null ? void 0 : _b.description,
+        this.options.describe + "\n"
+      );
     }
     logColored((_c = this.options.colors) == null ? void 0 : _c.header, "Usage");
     logColored(

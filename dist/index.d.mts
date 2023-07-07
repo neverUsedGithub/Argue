@@ -24,6 +24,9 @@ interface ArgueArgOptions {
     default?: any;
     name: string;
 }
+type ArgumentToType<T extends string | string[] | undefined> = T extends undefined ? unknown : T extends "string" ? string : T extends "number" ? number : T extends "boolean" ? boolean : T extends string[] ? string : never;
+type ArgumentMultiple<T, U extends boolean | undefined> = U extends undefined ? T : U extends true ? T[] : T;
+type ArgumentRequired<T, U extends boolean | undefined, V> = U extends undefined ? T | V : U extends true ? T : T | V;
 type ArgueOptOptions = ArgueArgOptions;
 type ArguePosOptions = ArgueArgOptions;
 interface ArgueCommandOptions {
@@ -43,7 +46,11 @@ type ParseResult<T> = {
     success: false;
     error: string;
 };
-declare class ArgueParse {
+type StripLeadingDashes<T extends string> = T extends `--${infer Name}` ? Name : T extends `-${infer Name}` ? Name : never;
+type SplitAtCommas<T extends string> = T extends `${infer First},${infer Space}${infer Rest}` ? [First, ...SplitAtCommas<Rest>] : [T];
+type GetLastItem<T extends any[]> = T extends [...infer _, infer Last] ? Last : never;
+type NormalizeOptionName<T extends string> = StripLeadingDashes<GetLastItem<SplitAtCommas<T>>>;
+declare class ArgueParse<T extends Record<string, any>> {
     private commands;
     private options;
     private kwargs;
@@ -52,13 +59,29 @@ declare class ArgueParse {
     private seenMultiple;
     private isSubcommand;
     constructor(options: ArgueOptions, isSubcommand?: boolean);
-    command(options: ArgueCommandOptions, handler?: (parser: ArgueParse) => ArgueParse): this;
-    opt(options: ArgueOptOptions): this;
-    pos(options: ArguePosOptions): this;
+    command<S>(options: ArgueCommandOptions, handler?: (parser: ArgueParse<{}>) => S): typeof handler extends undefined ? ArgueParse<T> : ArgueParse<T & (S extends ArgueParse<infer U> ? U : never)>;
+    opt<U extends string, V extends ArgueOptOptions["accepts"], W extends ArgueOptOptions["multiple"] = false, E extends ArgueOptOptions["required"] = false, S extends ArgueOptOptions["default"] = undefined>(options: ArgueOptOptions & {
+        name: U;
+        accepts?: V;
+        multiple?: W;
+        required?: E;
+        default?: S;
+    }): ArgueParse<T & {
+        [K in NormalizeOptionName<U>]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S>;
+    }>;
+    pos<U extends string, V extends ArguePosOptions["accepts"], W extends ArguePosOptions["multiple"] = false, E extends ArguePosOptions["required"] = false, S extends ArgueOptOptions["default"] = undefined>(options: ArguePosOptions & {
+        name: U;
+        accepts?: V;
+        multiple?: W;
+        required?: E;
+        default?: S;
+    }): ArgueParse<T & {
+        [K in U]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S>;
+    }>;
     help(error?: string): void;
-    safeParse<T extends Record<string, any> = Record<string, unknown>>(args: string[]): ParseResult<T>;
-    parse<T extends Record<string, any> = Record<string, unknown>>(args: string[]): ParseContext<T>;
+    safeParse(args: string[]): ParseResult<T>;
+    parse(args: string[]): ParseContext<T>;
 }
-declare function argue(options?: ArgueOptions): ArgueParse;
+declare function argue(options?: ArgueOptions): ArgueParse<{}>;
 
 export { ArgueColors, ArgueCommandOptions, ArgueOptOptions, ArgueOptions, ArguePosOptions, ParseContext, ParseResult, argue as default };
