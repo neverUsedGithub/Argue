@@ -1,5 +1,4 @@
 import argue from "../src";
-import chalk from "chalk";
 
 const ctx =
     argue({
@@ -21,9 +20,9 @@ const ctx =
     .opt({
         name: "-v, --verbose",
         describe: "Use verbose logging.",
-        accepts: "boolean"
+        accepts: "boolean",
+        default: false
     })
     .parse(process.argv.slice(2));
 
-console.log(ctx.argv);
-//              ^?
+console.log(ctx.command, ctx.argv);

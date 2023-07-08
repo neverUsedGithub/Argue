@@ -59,7 +59,18 @@ declare class ArgueParse<T extends Record<string, any>> {
     private seenMultiple;
     private isSubcommand;
     constructor(options: ArgueOptions, isSubcommand?: boolean);
+    /**
+     * Defines a command with the specified options and an optional handler function.
+     *
+     * @param options - Options for the command, including name, describe, and help.
+     * @param handler - Optional handler function that will be called to handle the command.
+     */
     command<S>(options: ArgueCommandOptions, handler?: (parser: ArgueParse<{}>) => S): typeof handler extends undefined ? ArgueParse<T> : ArgueParse<T & (S extends ArgueParse<infer U> ? U : never)>;
+    /**
+     * Defines a new option with the specified options and returns `this`.
+     *
+     * @param options - Options for the option.
+     */
     opt<U extends string, V extends ArgueOptOptions["accepts"], W extends ArgueOptOptions["multiple"] = false, E extends ArgueOptOptions["required"] = false, S extends ArgueOptOptions["default"] = undefined>(options: ArgueOptOptions & {
         name: U;
         accepts?: V;
@@ -69,6 +80,11 @@ declare class ArgueParse<T extends Record<string, any>> {
     }): ArgueParse<T & {
         [K in NormalizeOptionName<U>]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S>;
     }>;
+    /**
+     * Defines a new positional argument with the specified options and returns `this`.
+     *
+     * @param options - Options for the positional argument.
+     */
     pos<U extends string, V extends ArguePosOptions["accepts"], W extends ArguePosOptions["multiple"] = false, E extends ArguePosOptions["required"] = false, S extends ArgueOptOptions["default"] = undefined>(options: ArguePosOptions & {
         name: U;
         accepts?: V;
@@ -78,10 +94,34 @@ declare class ArgueParse<T extends Record<string, any>> {
     }): ArgueParse<T & {
         [K in U]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S>;
     }>;
+    /**
+     * Display the help information for the command-line interface.
+     *
+     * @param error - Optional error message to display.
+     * @returns void
+     */
     help(error?: string): void;
+    /**
+     * Safely parses the provided arguments and returns a parse result.
+     *
+     * @param args - The string array containing the arguments to parse.
+     * @returns The parse result, containing the parsed data or an error message.
+     */
     safeParse(args: string[]): ParseResult<T>;
+    /**
+     * Parses the passed arguments and returns a parse context.
+     * If parsing fails, it displays a help message and exits.
+     *
+     * @returns The parse context if successful, otherwise exits the program.
+     */
     parse(args: string[]): ParseContext<T>;
 }
+/**
+ * Creates a new instance of Argue with the specified options and returns it.
+ *
+ * @param options - Optional configuration options for the Argue instance.
+ * @returns The created Argue instance.
+ */
 declare function argue(options?: ArgueOptions): ArgueParse<{}>;
 
 export { ArgueColors, ArgueCommandOptions, ArgueOptOptions, ArgueOptions, ArguePosOptions, ParseContext, ParseResult, argue as default };

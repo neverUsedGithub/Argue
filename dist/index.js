@@ -82,6 +82,12 @@ var ArgueParse = class _ArgueParse {
       );
     }
   }
+  /**
+   * Defines a command with the specified options and an optional handler function.
+   *
+   * @param options - Options for the command, including name, describe, and help.
+   * @param handler - Optional handler function that will be called to handle the command.
+   */
   command(options, handler) {
     const command = {
       name: options.name,
@@ -92,6 +98,11 @@ var ArgueParse = class _ArgueParse {
     this.commands.push(command);
     return this;
   }
+  /**
+   * Defines a new option with the specified options and returns `this`.
+   *
+   * @param options - Options for the option.
+   */
   opt(options) {
     const names = options.name.replace(SPACE_REGEX, "").split(",");
     this.kwargs.push({
@@ -105,6 +116,11 @@ var ArgueParse = class _ArgueParse {
     });
     return this;
   }
+  /**
+   * Defines a new positional argument with the specified options and returns `this`.
+   *
+   * @param options - Options for the positional argument.
+   */
   pos(options) {
     if (this.seenMultiple)
       throw new Error(
@@ -127,6 +143,12 @@ var ArgueParse = class _ArgueParse {
     });
     return this;
   }
+  /**
+   * Display the help information for the command-line interface.
+   *
+   * @param error - Optional error message to display.
+   * @returns void
+   */
   help(error) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
     if (error) {
@@ -177,6 +199,12 @@ var ArgueParse = class _ArgueParse {
       }
     }
   }
+  /**
+   * Safely parses the provided arguments and returns a parse result.
+   *
+   * @param args - The string array containing the arguments to parse.
+   * @returns The parse result, containing the parsed data or an error message.
+   */
   safeParse(args) {
     const parsedArgs = {};
     let posIndex = 0;
@@ -324,6 +352,12 @@ var ArgueParse = class _ArgueParse {
       }
     };
   }
+  /**
+   * Parses the passed arguments and returns a parse context.
+   * If parsing fails, it displays a help message and exits.
+   *
+   * @returns The parse context if successful, otherwise exits the program.
+   */
   parse(args) {
     const res = this.safeParse(args);
     if (!res.success) {
