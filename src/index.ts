@@ -61,11 +61,31 @@ export interface ArgueCommandOptions {
     help?: string | null;
 }
 
-export interface ParseContext<T = Record<string, unknown>> {
-    command?: string;
-    argv: T;
-    help: () => void;
-}
+export type ParseContext<T = Record<string, Record<string, unknown>>> = {
+    [K in keyof T]: { command: K, argv: {[O in keyof T[K]]: T[K][O]}, help: () => void }
+}[keyof T];
+
+type Merge<A, B> = {
+    [K in keyof A | keyof B]: 
+        K extends keyof A & keyof B
+        ? A[K] | B[K]
+        : K extends keyof B
+        ? B[K]
+        : K extends keyof A
+        ? A[K]
+        : never;
+};
+
+type MergeSafe<A, B> = unknown extends A
+    ? B
+    : unknown extends B
+    ? A
+    : Merge<A, B>;
+
+
+type ReplaceProperty<Obj extends Record<string, any>, Prop extends string | number | symbol, New> = Prop extends keyof Obj
+    ? {[K in keyof Obj]: K extends Prop ? New : Obj[K]}
+    : MergeSafe<Obj, { [K in Prop]: New }>;
 
 export type ParseResult<T> =
     | {
@@ -122,7 +142,7 @@ function stringifyType(value: ArgueArg["accepts"]): string {
     return value;
 }
 
-class ArgueParse<T extends Record<string, any>> {
+class ArgueParse<T extends Record<string, Record<string, any>>> {
     private commands: ArgueCommand[];
     private options: ArgueOptions;
     private kwargs: ArgueArg[];
@@ -166,12 +186,12 @@ class ArgueParse<T extends Record<string, any>> {
      * @param options - Options for the command, including name, describe, and help.
      * @param handler - Optional handler function that will be called to handle the command.
      */
-    command<S>(
-        options: ArgueCommandOptions,
+    command<S, TName extends string>(
+        options: ArgueCommandOptions & { name: TName },
         handler?: (parser: ArgueParse<{}>) => S
     ): typeof handler extends undefined
         ? ArgueParse<T>
-        : ArgueParse<T & (S extends ArgueParse<infer U> ? U : never)> {
+        : ArgueParse<T & { [K in TName]: (S extends ArgueParse<infer U> ? U["none"] : never) }> {
         const command: ArgueCommand = {
             name: options.name,
             describe: options.describe ?? "",
@@ -192,7 +212,7 @@ class ArgueParse<T extends Record<string, any>> {
     opt<U extends string, V extends ArgueOptOptions["accepts"], W extends ArgueOptOptions["multiple"] = false, E extends ArgueOptOptions["required"] = false, S extends ArgueOptOptions["default"] = undefined>(
         options: ArgueOptOptions & { name: U, accepts?: V, multiple?: W, required?: E, default?: S }
     ): ArgueParse<
-        T & { [K in NormalizeOptionName<U>]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S> }
+        ReplaceProperty<T, "none", MergeSafe<T["none"], { [K in NormalizeOptionName<U>]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S> }>>
     > {
         const names = options.name.replace(SPACE_REGEX, "").split(",");
 
@@ -216,7 +236,9 @@ class ArgueParse<T extends Record<string, any>> {
      */
     pos<U extends string, V extends ArguePosOptions["accepts"], W extends ArguePosOptions["multiple"] = false, E extends ArguePosOptions["required"] = false, S extends ArgueOptOptions["default"] = undefined>(
         options: ArguePosOptions & { name: U, accepts?: V, multiple?: W, required?: E, default?: S }
-    ): ArgueParse<T & { [K in U]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S> }> {
+    ): ArgueParse<
+        ReplaceProperty<T, "none", MergeSafe<T["none"], { [K in U]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S> }>>
+    > {
         if (this.seenMultiple)
             throw new Error(
                 "No arguments can follow an argument that accepts multiple values."
@@ -336,7 +358,7 @@ class ArgueParse<T extends Record<string, any>> {
                 } as ParseResult<T>;
             }
 
-            const parser = cmd.handler(new ArgueParse({}, true) as this);
+            const parser = cmd.handler(new ArgueParse({}, true));
             const result = parser.safeParse(args.slice(1));
 
             if (result.success && cmd.name === "help") {
@@ -375,7 +397,7 @@ class ArgueParse<T extends Record<string, any>> {
                                 describe: foundCommand.describe,
                             },
                             true
-                        ) as this
+                        )
                     )
                     .help();
                 process.exit(0);
@@ -383,7 +405,7 @@ class ArgueParse<T extends Record<string, any>> {
 
             if (!result.success) return { success: false, error: result.error };
 
-            result.ctx.command = cmd.name;
+            (result.ctx as any).command = cmd.name;
             return result as ParseResult<T>;
         }
 
@@ -507,6 +529,7 @@ class ArgueParse<T extends Record<string, any>> {
         return {
             success: true,
             ctx: {
+                command: "none",
                 argv: parsedArgs,
                 help: (error?: string) => this.help(error),
             },

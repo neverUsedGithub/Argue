@@ -347,6 +347,7 @@ var ArgueParse = class _ArgueParse {
     return {
       success: true,
       ctx: {
+        command: "none",
         argv: parsedArgs,
         help: (error) => this.help(error)
       }

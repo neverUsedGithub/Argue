@@ -34,11 +34,24 @@ interface ArgueCommandOptions {
     describe?: string;
     help?: string | null;
 }
-interface ParseContext<T = Record<string, unknown>> {
-    command?: string;
-    argv: T;
-    help: () => void;
-}
+type ParseContext<T = Record<string, Record<string, unknown>>> = {
+    [K in keyof T]: {
+        command: K;
+        argv: {
+            [O in keyof T[K]]: T[K][O];
+        };
+        help: () => void;
+    };
+}[keyof T];
+type Merge<A, B> = {
+    [K in keyof A | keyof B]: K extends keyof A & keyof B ? A[K] | B[K] : K extends keyof B ? B[K] : K extends keyof A ? A[K] : never;
+};
+type MergeSafe<A, B> = unknown extends A ? B : unknown extends B ? A : Merge<A, B>;
+type ReplaceProperty<Obj extends Record<string, any>, Prop extends string | number | symbol, New> = Prop extends keyof Obj ? {
+    [K in keyof Obj]: K extends Prop ? New : Obj[K];
+} : MergeSafe<Obj, {
+    [K in Prop]: New;
+}>;
 type ParseResult<T> = {
     success: true;
     ctx: ParseContext<T>;
@@ -50,7 +63,7 @@ type StripLeadingDashes<T extends string> = T extends `--${infer Name}` ? Name :
 type SplitAtCommas<T extends string> = T extends `${infer First},${infer Space}${infer Rest}` ? [First, ...SplitAtCommas<Rest>] : [T];
 type GetLastItem<T extends any[]> = T extends [...infer _, infer Last] ? Last : never;
 type NormalizeOptionName<T extends string> = StripLeadingDashes<GetLastItem<SplitAtCommas<T>>>;
-declare class ArgueParse<T extends Record<string, any>> {
+declare class ArgueParse<T extends Record<string, Record<string, any>>> {
     private commands;
     private options;
     private kwargs;
@@ -65,7 +78,11 @@ declare class ArgueParse<T extends Record<string, any>> {
      * @param options - Options for the command, including name, describe, and help.
      * @param handler - Optional handler function that will be called to handle the command.
      */
-    command<S>(options: ArgueCommandOptions, handler?: (parser: ArgueParse<{}>) => S): typeof handler extends undefined ? ArgueParse<T> : ArgueParse<T & (S extends ArgueParse<infer U> ? U : never)>;
+    command<S, TName extends string>(options: ArgueCommandOptions & {
+        name: TName;
+    }, handler?: (parser: ArgueParse<{}>) => S): typeof handler extends undefined ? ArgueParse<T> : ArgueParse<T & {
+        [K in TName]: (S extends ArgueParse<infer U> ? U["none"] : never);
+    }>;
     /**
      * Defines a new option with the specified options and returns `this`.
      *
@@ -77,9 +94,9 @@ declare class ArgueParse<T extends Record<string, any>> {
         multiple?: W;
         required?: E;
         default?: S;
-    }): ArgueParse<T & {
+    }): ArgueParse<ReplaceProperty<T, "none", MergeSafe<T["none"], {
         [K in NormalizeOptionName<U>]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S>;
-    }>;
+    }>>>;
     /**
      * Defines a new positional argument with the specified options and returns `this`.
      *
@@ -91,9 +108,9 @@ declare class ArgueParse<T extends Record<string, any>> {
         multiple?: W;
         required?: E;
         default?: S;
-    }): ArgueParse<T & {
+    }): ArgueParse<ReplaceProperty<T, "none", MergeSafe<T["none"], {
         [K in U]: ArgumentRequired<ArgumentMultiple<ArgumentToType<V>, W>, E, S>;
-    }>;
+    }>>>;
     /**
      * Display the help information for the command-line interface.
      *

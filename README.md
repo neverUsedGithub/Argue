@@ -52,6 +52,12 @@ const ctx =
     })
     .parse(process.argv.slice(2));
 
-// ctx.command is the command that was used or undefined
-console.log(ctx.command, ctx.argv);
+if (ctx.command === "none")
+    console.log(ctx.argv.port) // errors
+
+// ctx.command is the command that was used or "none"
+console.log(
+    ctx.command /* "none" | "serve" */,
+    ctx.argv /* { verbose: boolean } | { port: number } */
+);
 ```

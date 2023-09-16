@@ -25,4 +25,8 @@ const ctx =
     })
     .parse(process.argv.slice(2));
 
+if (ctx.command === "serve")
+    console.log(ctx.argv.port)
+
 console.log(ctx.command, ctx.argv);
+//                           ^?

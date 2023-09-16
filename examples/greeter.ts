@@ -13,3 +13,4 @@ const ctx =
 
 // Argue automatically created argv with the correct types
 console.log(ctx.argv.name);
+//              ^?
